@@ -23,7 +23,7 @@ exports.lambdaHandler = async (event, context) => {
         const {type, messages} = helper.get_type_messages(event, context);
         const data = {status: 'OK'};
         const response = helper.get_response(data);
-        console.log({type, messages, response});
+        console.log(JSON.stringify({type, messages, response}));
         return response;
     } finally {
         helper.final_emfiles_check();
