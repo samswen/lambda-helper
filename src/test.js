@@ -15,4 +15,3 @@ exports.lambdaHandler = async (event, context) => {
         final_emfiles_check();
     }
 };
-

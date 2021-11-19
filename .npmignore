@@ -16,3 +16,4 @@ doc
 dist
 deploy
 template.yaml
+src/test.js
