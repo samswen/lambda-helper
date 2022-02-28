@@ -53,20 +53,26 @@ class EventContext {
      * @returns 
      */
     get_type_and_messages(event, context) {
+        if (!this._messages) this._messages = [];
         if (event.Records && Array.isArray(event.Records) && event.Records.length > 0) {
             if (event.Records[0].EventSource === 'aws:sns') {
                 this._type = 'sns';
-                this._messages = [];
-                for (const record of event.Records) {
-                    this._messages.push(this.#try_json(event.Records[0].Sns.Message));
-                }
+                const record = event.Records[0];
+                const result = this.#try_json(record.Sns.Message);
+                if (result.Records) this.get_type_and_messages(result);
+                else this._messages.push(result);
                 return;
             } else if (event.Records[0].eventSource === 'aws:sqs') {
                 this._type = 'sqs';
-                this._messages = [];
-                for (const record of event.Records) {
-                    this._messages.push(this.#try_json(record.body))
-                }
+                const record = event.Records[0];
+                const result = this.#try_json(record.body);
+                if (result.Records) this.get_type_and_messages(result);
+                else this._messages.push(result);
+                return;
+            } else if (event.Records[0].eventSource === 'aws:s3') {
+                this._type = 's3';
+                const record = event.Records[0];
+                this._messages.push(record.s3)
                 return;
             }
         }
@@ -81,16 +87,16 @@ class EventContext {
                     message.body = body;
                 }
             }
-            this._messages = [message];
+            this._messages.push(message);
             return
         } 
         if (Object.keys(event).length === 0 || (context && context.clientContext)) {
             this._type = 'invoke';
-            this._messages = [context.clientContext];
+            this._messages.push(context.clientContext);
             return;
         }
         this._type = 'json';
-        this._messages = [event];
+        this._messages.push(event);
     }
 
     #get_body(event) {
