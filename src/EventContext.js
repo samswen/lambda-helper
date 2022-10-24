@@ -20,7 +20,7 @@ class EventContext {
     }
 
     get_memory_limit_mb() {
-        return this.context.memoryLimitInMB;
+        return Number(this.context.memoryLimitInMB);
     }
 
     /**
