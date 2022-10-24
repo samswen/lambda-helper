@@ -4,6 +4,7 @@ class EventContext {
 
     constructor(event, context) {
         this.context = context;
+        this.type = '';
         this.get_type_and_messages(event, context);
     }
 
@@ -63,28 +64,41 @@ class EventContext {
     get_type_and_messages(event, context) {
         this.messages = [];
         if (event.Records && Array.isArray(event.Records) && event.Records.length > 0) {
-            if (event.Records[0].EventSource === 'aws:sns') {
-                this.type = 'sns';
-                const record = event.Records[0];
-                const result = this.try_json(record.Sns.Message);
-                if (result.Records) this.get_type_and_messages(result);
-                else this.messages.push(result);
-                return;
-            } else if (event.Records[0].eventSource === 'aws:sqs') {
-                this.type = 'sqs';
-                const record = event.Records[0];
-                const result = this.try_json(record.body);
-                if (result.Type === 'Notification' && result.Message) {
-                    this.messages.push(this.try_json(result.Message));
-                } else if (result.Records) this.get_type_and_messages(result);
-                else this.messages.push(result);
-                return;
-            } else if (event.Records[0].eventSource === 'aws:s3') {
-                this.type = 's3';
-                const record = event.Records[0];
-                this.messages.push(record.s3)
-                return;
+            for (const record of event.Records) {
+                const { EventSource, eventSource } = record;
+                const source = EventSource || eventSource;
+                switch (source) {
+                    case 'aws:sns': {
+                        if (this.type) this.type += '/sns';
+                        else this.type = 'sns';
+                        const result = this.try_json(record.Sns.Message);
+                        if (result.Records) this.get_type_and_messages(result);
+                        else this.messages.push(result);
+                        break;
+                    }
+                    case 'aws:sqs': {
+                        if (this.type) this.type += '/sqs';
+                        else this.type = 'sqs';
+                        const result = this.try_json(record.body);
+                        if (result.Type === 'Notification' && result.Message) {
+                            this.type += '/sns';
+                            this.messages.push(this.try_json(result.Message));
+                        } else if (result.Records) this.get_type_and_messages(result);
+                        else this.messages.push(result);
+                        break;
+                    }
+                    case 'aws:s3': {
+                        if (this.type) this.type += '/s3';
+                        else this.type = 's3';
+                        this.messages.push(record.s3);
+                        break;
+                    }
+                    default: {
+                        console.error('unsupported event source', source)
+                    }
+                }
             }
+            return;
         }
         if (event.source === 'aws.events') {
             this.type = 'event';
