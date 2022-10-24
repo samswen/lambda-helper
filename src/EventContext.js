@@ -93,9 +93,9 @@ class EventContext {
             }
             return;
         }
-        if (event.source === 'aws.events') {
+        if (event.source && event['detail-type'] && event.detail) {
             this.type = 'event';
-            this.messages = [ event.detail ];
+            this.messages = [ event ];
             return;
         }
         if (event.headers) {
