@@ -13,6 +13,7 @@ module.exports = {
     start,
 
     get_type,
+    get_arns,
     get_http,
     get_messages,
     get_remaining_time_ms,
@@ -58,6 +59,10 @@ function get_type() {
 
 function get_http() {
     return event_context?.get_http();
+}
+
+function get_arns() {
+    return event_context?.get_arns();
 }
 
 function get_messages() {

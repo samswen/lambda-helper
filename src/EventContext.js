@@ -5,11 +5,16 @@ class EventContext {
     constructor(event, context) {
         this.context = context;
         this.type = '';
+        this.arns = [];
         this.get_type_and_messages(event, context);
     }
 
     get_type() {
         return this.type;
+    }
+
+    get_arns() {
+        return this.arns;
     }
 
     get_messages() {
@@ -115,18 +120,21 @@ class EventContext {
                 case 'aws:sns': {
                     if (this.type) this.type += '/sns';
                     else this.type = 'sns';
+                    this.arns.push(record.Sns.TopicArn);
                     this.parse_result(record.Sns.Message);
                     break;
                 }
                 case 'aws:sqs': {
                     if (this.type) this.type += '/sqs';
                     else this.type = 'sqs';
+                    this.arns.push(record.eventSourceARN);
                     this.parse_result(record.body);
                     break;
                 }
                 case 'aws:s3': {
                     if (this.type) this.type += '/s3';
                     else this.type = 's3';
+                    this.arns.push(record.s3.arn);
                     this.messages.push(record.s3);
                     break;
                 }
@@ -142,6 +150,7 @@ class EventContext {
         const result = this.try_json(input);
         if (result.Type === 'Notification' && result.Message) {
             this.type += '/sns';
+            this.arns.push(result.TopicArn);
             const message = this.try_json(result.Message);
             if (message.Records) {
                 this.parse_records(message.Records);
