@@ -48,7 +48,7 @@ function get_type_messages(event, context) {
     return {type, messages};
 }
 
-function get_response(data = 'OK', status_code = 200) {
+function get_response(data = {status: 'OK'}, status_code = 200) {
     return event_context?.get_response(data, status_code);
 }
 

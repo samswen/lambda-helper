@@ -62,7 +62,7 @@ class EventContext {
      * @returns 
      */
     get_type_and_messages(event, context) {
-        this.messages = [];
+        if (!this.messages) this.messages = [];
         if (event.Records && Array.isArray(event.Records) && event.Records.length > 0) {
             for (const record of event.Records) {
                 const { EventSource, eventSource } = record;
@@ -71,20 +71,13 @@ class EventContext {
                     case 'aws:sns': {
                         if (this.type) this.type += '/sns';
                         else this.type = 'sns';
-                        const result = this.try_json(record.Sns.Message);
-                        if (result.Records) this.get_type_and_messages(result);
-                        else this.messages.push(result);
+                        this.parse_result(record.Sns.Message);
                         break;
                     }
                     case 'aws:sqs': {
                         if (this.type) this.type += '/sqs';
                         else this.type = 'sqs';
-                        const result = this.try_json(record.body);
-                        if (result.Type === 'Notification' && result.Message) {
-                            this.type += '/sns';
-                            this.messages.push(this.try_json(result.Message));
-                        } else if (result.Records) this.get_type_and_messages(result);
-                        else this.messages.push(result);
+                        this.parse_result(record.body);
                         break;
                     }
                     case 'aws:s3': {
@@ -136,6 +129,17 @@ class EventContext {
         }
         this.type = 'json';
         this.messages.push(event);
+    }
+
+    // private
+    parse_result(input) {
+        const result = this.try_json(input);
+        if (result.Type === 'Notification' && result.Message) {
+            this.type += '/sns';
+            if (result.Message.Records) this.get_type_and_messages(result);
+            else this.messages.push(this.try_json(result.Message));
+        } else if (result.Records) this.get_type_and_messages(result);
+        else this.messages.push(result);
     }
 
     // private

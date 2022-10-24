@@ -29,7 +29,7 @@ exports.lambdaHandler = async (event, context) => {
         const memory_limit_mb = get_memory_limit_mb();
         const response = get_response();
 
-        console.log({type, messages, remaining_time_ms, memory_limit_mb, response});
+        console.log({type, messages: JSON.stringify(messages), remaining_time_ms, memory_limit_mb, response});
 
         return response;
 
