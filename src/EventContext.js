@@ -34,7 +34,7 @@ class EventContext {
      * @returns 
      */
     get_response(data = 'OK', status_code = 200) {
-        if (this.type === 'http') {
+        if (this._type === 'http') {
             const headers = {};
             let body;
             if (typeof data === 'object') {
