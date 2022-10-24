@@ -62,73 +62,79 @@ class EventContext {
      * @returns 
      */
     get_type_and_messages(event, context) {
+
         if (!this.messages) this.messages = [];
-        if (event.Records && Array.isArray(event.Records) && event.Records.length > 0) {
-            for (const record of event.Records) {
-                const { EventSource, eventSource } = record;
-                const source = EventSource || eventSource;
-                switch (source) {
-                    case 'aws:sns': {
-                        if (this.type) this.type += '/sns';
-                        else this.type = 'sns';
-                        this.parse_result(record.Sns.Message);
-                        break;
-                    }
-                    case 'aws:sqs': {
-                        if (this.type) this.type += '/sqs';
-                        else this.type = 'sqs';
-                        this.parse_result(record.body);
-                        break;
-                    }
-                    case 'aws:s3': {
-                        if (this.type) this.type += '/s3';
-                        else this.type = 's3';
-                        this.messages.push(record.s3);
-                        break;
-                    }
-                    default: {
-                        console.error('unsupported event source', source)
-                    }
-                }
-            }
-            return;
-        }
-        if (event.source && event['detail-type'] && event.detail) {
+
+        if (event.Records) {
+            this.parse_records(event.Records);
+        } else if (event.headers) {
+            this.parse_http(event);
+        } else if (event.source && event.detail) {
             this.type = 'event';
             this.messages = [ event ];
-            return;
-        }
-        if (event.headers) {
-            this.type = 'http';
-            this.http = event.requestContext.http;
-            this.http.headers = event.headers;
-            const message = {};
-            if (event.pathParameters) {
-                Object.assign(message, event.pathParameters);
-            }
-            if (event.queryStringParameters) {
-                this.http.query = event.queryStringParameters;
-                Object.assign(message, event.queryStringParameters);
-            }
-            if (event.body) {
-                const body = this.get_body(event);
-                if (typeof body === 'object') {
-                    Object.assign(message, body);
-                } else {
-                    message.body = body;
-                }
-                this.http.body = body;
-            }
-            this.messages.push(message);
-            return;
-        } 
-        if (Object.keys(event).length === 0 || (context && context.clientContext)) {
+        } else if (context.clientContext) {
             this.type = 'invoke';
             this.messages.push(context.clientContext);
-            return;
+        } else {
+            this.type = 'json';
+            this.messages.push(event);
         }
-        this.type = 'json';
-        this.messages.push(event);
+    }
+
+    // private
+    parse_http(event) {
+        this.type = 'http';
+        this.http = event.requestContext.http;
+        this.http.headers = event.headers;
+        const message = {};
+        if (event.pathParameters) {
+            Object.assign(message, event.pathParameters);
+        }
+        if (event.queryStringParameters) {
+            this.http.query = event.queryStringParameters;
+            Object.assign(message, event.queryStringParameters);
+        }
+        if (event.body) {
+            const body = this.get_body(event);
+            if (typeof body === 'object') {
+                Object.assign(message, body);
+            } else {
+                message.body = body;
+            }
+            this.http.body = body;
+        }
+        this.messages.push(message);
+    }
+
+    // private
+    parse_records(Records) {
+        for (const record of Records) {
+            const { EventSource, eventSource } = record;
+            const source = EventSource || eventSource;
+            switch (source) {
+                case 'aws:sns': {
+                    if (this.type) this.type += '/sns';
+                    else this.type = 'sns';
+                    this.parse_result(record.Sns.Message);
+                    break;
+                }
+                case 'aws:sqs': {
+                    if (this.type) this.type += '/sqs';
+                    else this.type = 'sqs';
+                    this.parse_result(record.body);
+                    break;
+                }
+                case 'aws:s3': {
+                    if (this.type) this.type += '/s3';
+                    else this.type = 's3';
+                    this.messages.push(record.s3);
+                    break;
+                }
+                default: {
+                    console.error('unsupported event source', source)
+                }
+            }
+        }
     }
 
     // private
@@ -136,10 +142,16 @@ class EventContext {
         const result = this.try_json(input);
         if (result.Type === 'Notification' && result.Message) {
             this.type += '/sns';
-            if (result.Message.Records) this.get_type_and_messages(result);
-            else this.messages.push(this.try_json(result.Message));
-        } else if (result.Records) this.get_type_and_messages(result);
-        else this.messages.push(result);
+            if (result.Message.Records) {
+                this.parse_records(result.Message.Records);
+            } else {
+                this.messages.push(this.try_json(result.Message));
+            }
+        } else if (result.Records) {
+            this.parse_records(result.Records);
+        } else {
+            this.messages.push(result);
+        }
     }
 
     // private
