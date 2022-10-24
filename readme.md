@@ -15,8 +15,6 @@ npm install @samwen/lambda-helper
 <pre>
 'use strict';
 
-const helper = require('@samwen/lambda-helper');
-
 const { start, get_type, get_messages, get_remaining_time_ms, get_memory_limit_mb, get_response, done } = require('@samwen/lambda-helper');
 
 exports.lambdaHandler = async (event, context) => {
