@@ -13,6 +13,7 @@ module.exports = {
     start,
 
     get_type,
+    get_http,
     get_messages,
     get_remaining_time_ms,
     get_memory_limit_mb,
@@ -53,6 +54,10 @@ function get_response(data = 'OK', status_code = 200) {
 
 function get_type() {
     return event_context?.get_type();
+}
+
+function get_http() {
+    return event_context?.get_http();
 }
 
 function get_messages() {

@@ -15,6 +15,10 @@ class EventContext {
         return this._messages;
     }
 
+    get_http() {
+        return this._http;
+    }
+
     get_remaining_time_ms() {
         return this.context.getRemainingTimeInMillis();
     }
@@ -57,7 +61,7 @@ class EventContext {
      * @returns 
      */
     get_type_and_messages(event, context) {
-        if (!this._messages) this._messages = [];
+        this._messages = [];
         if (event.Records && Array.isArray(event.Records) && event.Records.length > 0) {
             if (event.Records[0].EventSource === 'aws:sns') {
                 this._type = 'sns';
@@ -80,9 +84,15 @@ class EventContext {
                 return;
             }
         }
-        if (event.queryStringParameters) {
+        if (event.headers) {
             this._type = 'http';
-            const message = {...event.queryStringParameters};
+            const message = {};
+            this._http = event.requestContext.http;
+            this._http.headers = event.headers;
+            if (event.queryStringParameters) {
+                this._http.query = event.queryStringParameters;
+                Object.assign(message, event.queryStringParameters);
+            }
             if (event.body) {
                 const body = this.get_body(event);
                 if (body && typeof body === 'object') {
@@ -90,6 +100,7 @@ class EventContext {
                 } else {
                     message.body = body;
                 }
+                this._http.body = body;
             }
             this._messages.push(message);
             return;
