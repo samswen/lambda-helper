@@ -74,7 +74,9 @@ class EventContext {
                 this.type = 'sqs';
                 const record = event.Records[0];
                 const result = this.try_json(record.body);
-                if (result.Records) this.get_type_and_messages(result);
+                if (result.Type === 'Notification' && result.Message) {
+                    this.messages.push(this.try_json(result.Message));
+                } else if (result.Records) this.get_type_and_messages(result);
                 else this.messages.push(result);
                 return;
             } else if (event.Records[0].eventSource === 'aws:s3') {
@@ -85,7 +87,7 @@ class EventContext {
             }
         }
         if (event.source === 'aws.events') {
-            this.type = 'events';
+            this.type = 'event';
             this.messages = [ event.detail ];
             return;
         }
