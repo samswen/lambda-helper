@@ -74,7 +74,7 @@ class EventContext {
             this.messages = [ event ];
         } else if (context.clientContext) {
             this.type = 'invoke';
-            this.messages.push(context.clientContext);
+            this.messages.push({...event, ...context.clientContext});
         } else {
             this.type = 'json';
             this.messages.push(event);
