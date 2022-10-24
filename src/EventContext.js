@@ -134,7 +134,7 @@ class EventContext {
                 case 'aws:s3': {
                     if (this.type) this.type += '/s3';
                     else this.type = 's3';
-                    this.arns.push(record.s3.arn);
+                    this.arns.push(record.s3.bucket.arn);
                     this.messages.push(record.s3);
                     break;
                 }
