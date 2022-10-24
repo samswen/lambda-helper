@@ -142,10 +142,11 @@ class EventContext {
         const result = this.try_json(input);
         if (result.Type === 'Notification' && result.Message) {
             this.type += '/sns';
-            if (result.Message.Records) {
-                this.parse_records(result.Message.Records);
+            const message = this.try_json(result.Message);
+            if (message.Records) {
+                this.parse_records(message.Records);
             } else {
-                this.messages.push(this.try_json(result.Message));
+                this.messages.push(message);
             }
         } else if (result.Records) {
             this.parse_records(result.Records);
