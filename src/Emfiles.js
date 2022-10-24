@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+
 const max_fds_allowed = 1000;
 
 class Emfiles {
@@ -8,6 +9,7 @@ class Emfiles {
     constructor() {
         this.is_new = true;
         this.emfiles_count = 0;
+        this.initial_count = 0;
         this.max_leaks = 0;
     }
 
@@ -19,7 +21,7 @@ class Emfiles {
      * @returns 
      */
     start_verify(max_emfiles_needed = 100, exit_process = false) {
-        this.#update_lambda_emfiles_count();
+        this.update_lambda_emfiles_count();
         console.log(`*** ${this.is_new ? 'new' : 'old'} process, emfiles count: ${this.emfiles_count}`);
         this.is_new = false;
         if (exit_process && max_fds_allowed - this.emfiles_count < max_emfiles_needed) {
@@ -35,22 +37,14 @@ class Emfiles {
      *
      */
     final_check(max_emfiles_needed = 100, exit_process = true) {
-        const emfiles_count = this.emfiles_count;
-        this.#update_lambda_emfiles_count();
-        if (this.emfiles_count > emfiles_count) {
-            const leaks = this.emfiles_count - emfiles_count;
-            if (leaks > this.max_leaks) {
-                this.max_leaks = leaks;
-            }
-            console.log(`*** emfiles count: ${this.emfiles_count}, leaks: ${leaks}`);
+        const leaks = this.update_lambda_emfiles_count();
+        if (leaks > 0) {
+            console.log(`*** emfiles count: ${this.emfiles_count}, leaks: ${leaks}, max leaks: ${this.max_leaks}`);
         } else {
-            console.log('*** no leak emfiles found');
+            console.log(`*** no leak emfiles found, max leaks: ${this.max_leaks}`);
         }
         if (exit_process) {
-            if (max_emfiles_needed < this.max_leaks) {
-                max_emfiles_needed = this.max_leaks;
-            }
-            if (max_fds_allowed - this.emfiles_count < max_emfiles_needed) {
+            if (max_fds_allowed - this.initial_count - this.max_leaks < max_emfiles_needed) {
                 process.exit(1);
             }
         }
@@ -59,8 +53,19 @@ class Emfiles {
     /**
      * private implementation
      */
-    #update_lambda_emfiles_count() {
-        this.emfiles_count = fs.readdirSync(`/proc/${process.pid}/fd`).length - 1;
+    update_lambda_emfiles_count() {
+        const emfiles_count = this.emfiles_count;
+        this.emfiles_count = fs.readdirSync(`/proc/${process.pid}/fd`).length;
+        let leaks = this.emfiles_count > emfiles_count ? this.emfiles_count - emfiles_count : 0;
+        if (this.is_new) {
+            this.initial_count = leaks;
+            leaks = 0;
+        } else {
+            leaks -= this.initial_count;
+            if (leaks < 0) leaks = 0;
+            if (leaks > this.max_leaks) this.max_leaks = leaks;
+        }
+        return leaks;
     }
 }
 

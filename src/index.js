@@ -4,24 +4,41 @@ const EventContext = require('./EventContext');
 const Emfiles = require('./Emfiles');
 
 module.exports = {
+
     get_type_messages,
     get_response,
     start_emfiles_verify,
     final_emfiles_check,
+
+    start,
+
+    get_type,
+    get_messages,
+    get_remaining_time_ms,
+    get_memory_limit_mb,
+
+    done,
 };
 
 let emfiles;
 let event_context;
 
-async function start_emfiles_verify(max_emfiles_needed = 100, exit_process = false) {
+function start(event, context) {
+    start_emfiles_verify();
+    event_context = new EventContext(event, context);
+}
+
+function done(max_emfiles_needed = 100) {
+    final_emfiles_check(max_emfiles_needed);
+}
+
+async function start_emfiles_verify() {
     if (!emfiles) emfiles = new Emfiles();
-    await emfiles.start_verify(max_emfiles_needed, exit_process);
+    emfiles.start_verify();
 }
 
 async function final_emfiles_check(max_emfiles_needed = 100, exit_process = true) {
-    if (emfiles) {
-        await emfiles.final_check(max_emfiles_needed, exit_process)
-    }
+    emfiles?.final_check(max_emfiles_needed, exit_process)
 }
 
 function get_type_messages(event, context) {
@@ -30,9 +47,22 @@ function get_type_messages(event, context) {
     return {type, messages};
 }
 
-function get_response(data, status_code = 200) {
-    if (event_context) {
-        return event_context.get_response(data, status_code);
-    }
-    return data;
+function get_response(data = 'OK', status_code = 200) {
+    return event_context?.get_response(data, status_code);
+}
+
+function get_type() {
+    return event_context?.get_type();
+}
+
+function get_messages() {
+    return event_context?.get_messages();
+}
+
+function get_remaining_time_ms() {
+    return event_context?.get_remaining_time_ms();
+}
+
+function get_memory_limit_mb() {
+    return event_context?.get_memory_limit_mb();
 }
