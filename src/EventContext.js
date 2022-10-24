@@ -8,15 +8,15 @@ class EventContext {
     }
 
     get_type() {
-        return this._type;
+        return this.type;
     }
 
     get_messages() {
-        return this._messages;
+        return this.messages;
     }
 
     get_http() {
-        return this._http;
+        return this.http;
     }
 
     get_remaining_time_ms() {
@@ -33,8 +33,8 @@ class EventContext {
      * @param {*} status_code status code for http response
      * @returns 
      */
-    get_response(data = 'OK', status_code = 200) {
-        if (this._type === 'http') {
+    get_response(data = {status: 'OK'}, status_code = 200) {
+        if (this.type === 'http') {
             const headers = {};
             let body;
             if (typeof data === 'object') {
@@ -61,57 +61,65 @@ class EventContext {
      * @returns 
      */
     get_type_and_messages(event, context) {
-        this._messages = [];
+        this.messages = [];
         if (event.Records && Array.isArray(event.Records) && event.Records.length > 0) {
             if (event.Records[0].EventSource === 'aws:sns') {
-                this._type = 'sns';
+                this.type = 'sns';
                 const record = event.Records[0];
                 const result = this.try_json(record.Sns.Message);
                 if (result.Records) this.get_type_and_messages(result);
-                else this._messages.push(result);
+                else this.messages.push(result);
                 return;
             } else if (event.Records[0].eventSource === 'aws:sqs') {
-                this._type = 'sqs';
+                this.type = 'sqs';
                 const record = event.Records[0];
                 const result = this.try_json(record.body);
                 if (result.Records) this.get_type_and_messages(result);
-                else this._messages.push(result);
+                else this.messages.push(result);
                 return;
             } else if (event.Records[0].eventSource === 'aws:s3') {
-                this._type = 's3';
+                this.type = 's3';
                 const record = event.Records[0];
-                this._messages.push(record.s3)
+                this.messages.push(record.s3)
                 return;
             }
         }
+        if (event.source === 'aws.events') {
+            this.type = 'events';
+            this.messages = [ event.detail ];
+            return;
+        }
         if (event.headers) {
-            this._type = 'http';
+            this.type = 'http';
+            this.http = event.requestContext.http;
+            this.http.headers = event.headers;
             const message = {};
-            this._http = event.requestContext.http;
-            this._http.headers = event.headers;
+            if (event.pathParameters) {
+                Object.assign(message, event.pathParameters);
+            }
             if (event.queryStringParameters) {
-                this._http.query = event.queryStringParameters;
+                this.http.query = event.queryStringParameters;
                 Object.assign(message, event.queryStringParameters);
             }
             if (event.body) {
                 const body = this.get_body(event);
-                if (body && typeof body === 'object') {
+                if (typeof body === 'object') {
                     Object.assign(message, body);
                 } else {
                     message.body = body;
                 }
-                this._http.body = body;
+                this.http.body = body;
             }
-            this._messages.push(message);
+            this.messages.push(message);
             return;
         } 
         if (Object.keys(event).length === 0 || (context && context.clientContext)) {
-            this._type = 'invoke';
-            this._messages.push(context.clientContext);
+            this.type = 'invoke';
+            this.messages.push(context.clientContext);
             return;
         }
-        this._type = 'json';
-        this._messages.push(event);
+        this.type = 'json';
+        this.messages.push(event);
     }
 
     // private
